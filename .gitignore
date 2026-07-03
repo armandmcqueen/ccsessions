@@ -1,0 +1,10 @@
+# Build output
+/ccsessions
+/dist/
+
+# Go
+*.test
+*.out
+
+# Local render output / scratch
+/tmp/

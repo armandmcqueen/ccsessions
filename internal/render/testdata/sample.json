@@ -1,0 +1,108 @@
+{
+  "session_id": "sess-123",
+  "project_key": "-Users-me-code-proj",
+  "file_path": "",
+  "version": "2.1.185",
+  "git_branch": "main",
+  "meta": {
+    "title": "Sample session",
+    "pr_url": "https://github.com/me/proj/pull/9",
+    "pr_number": 9
+  },
+  "turns": [
+    {
+      "index": 0,
+      "user_text": "Investigate the thing\nwith two lines",
+      "timestamp": "2026-06-01T12:00:00Z",
+      "responses": [
+        {
+          "model": "claude-opus-4-8",
+          "stop_reason": "tool_use",
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "cache_read_input_tokens": 0,
+            "cache_creation_input_tokens": 0
+          },
+          "text_blocks": [
+            {
+              "text": "I'll look into it."
+            }
+          ],
+          "thinking_blocks": [
+            {
+              "signature": "sig"
+            }
+          ],
+          "tool_calls": [
+            {
+              "name": "Bash",
+              "tool_use_id": "tu_1",
+              "input": {
+                "command": "ls",
+                "description": "list"
+              },
+              "result": "file.txt\nother.txt"
+            },
+            {
+              "name": "Agent",
+              "tool_use_id": "tu_2",
+              "input": {
+                "prompt": "Investigate the thing",
+                "subagent_type": "Explore"
+              },
+              "result": "subagent finished",
+              "subagent_id": "abc123"
+            },
+            {
+              "name": "Read",
+              "tool_use_id": "tu_3",
+              "input": {
+                "file_path": "/nope"
+              },
+              "result": "no such file",
+              "result_images": [
+                {
+                  "media_type": "image/png",
+                  "ref": "sess-123.assets/img-2d456658.png"
+                }
+              ],
+              "is_error": true
+            }
+          ],
+          "timestamp": "0001-01-01T00:00:00Z"
+        }
+      ],
+      "duration_ms": 1500
+    },
+    {
+      "index": 1,
+      "user_text": "continue",
+      "timestamp": "0001-01-01T00:00:00Z",
+      "responses": [
+        {
+          "model": "claude-opus-4-8",
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "cache_read_input_tokens": 0,
+            "cache_creation_input_tokens": 0
+          },
+          "text_blocks": [
+            {
+              "text": "Done."
+            }
+          ],
+          "timestamp": "0001-01-01T00:00:00Z"
+        }
+      ],
+      "compaction_before": {
+        "trigger": "manual",
+        "pre_tokens": 1000,
+        "timestamp": "0001-01-01T00:00:00Z"
+      }
+    }
+  ],
+  "raw_entry_count": 0,
+  "parsed_entry_count": 0
+}

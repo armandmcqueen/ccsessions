@@ -1,0 +1,76 @@
+# goreleaser configuration for ccsessions.
+# Validate locally with: goreleaser check
+# Build a local snapshot with: goreleaser release --snapshot --clean
+version: 2
+
+project_name: ccsessions
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: ccsessions
+    main: .
+    binary: ccsessions
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X github.com/armandmcqueen/ccsessions/internal/cli.version={{ .Version }}
+      - -X github.com/armandmcqueen/ccsessions/internal/cli.commit={{ .Commit }}
+      - -X github.com/armandmcqueen/ccsessions/internal/cli.date={{ .Date }}
+
+archives:
+  - id: ccsessions
+    formats: [tar.gz]
+    name_template: >-
+      {{ .ProjectName }}_{{ .Os }}_{{ .Arch }}
+    files:
+      - README.md
+      - LICENSE
+
+checksum:
+  name_template: checksums.txt
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+
+# Homebrew distribution. Casks are macOS-only; Linux users install via the
+# release tarball or `go install`.
+homebrew_casks:
+  - name: ccsessions
+    binaries:
+      - ccsessions
+    repository:
+      owner: armandmcqueen
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    homepage: "https://github.com/armandmcqueen/ccsessions"
+    description: "Render Claude Code sessions to readable markdown/json files"
+    license: "MIT"
+    commit_author:
+      name: goreleaser-bot
+      email: bot@ccsessions
+    # Strip the quarantine attribute so the unsigned binary runs without a
+    # Gatekeeper prompt after `brew install`.
+    hooks:
+      post:
+        install: |
+          if system_command("/usr/bin/xattr", args: ["-h"]).exit_status == 0
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/ccsessions"]
+          end

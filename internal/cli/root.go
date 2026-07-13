@@ -64,6 +64,7 @@ func addOutputFlags(cmd *cobra.Command) {
 	cmd.Flags().String("out", config.DefaultOut, "output directory for rendered sessions (env "+config.EnvOut+")")
 	cmd.Flags().String("format", config.DefaultFormat, `renderers to run, comma-separated, or "all" (env `+config.EnvFormat+")")
 	cmd.Flags().String("group-by", config.DefaultGroupBy, `group output by "repo" (fold worktrees of the same git repo together) or "project" (env `+config.EnvGroupBy+")")
+	cmd.Flags().String("group-rules", "", "path to a JSON regex grouping-rules file that overrides resolution (env "+config.EnvGroupRules+")")
 }
 
 // defaultDebounce is the watch coalescing window default.

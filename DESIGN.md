@@ -37,10 +37,13 @@ discover ──▶ parser ──▶ model.Session ──▶ render (Renderer reg
   re-rendering (mtime-based, stateless), resolves the output group (repo/project),
   and writes outputs atomically.
 - **repogroup** — resolves a session's working directory to a stable group key.
-  Prefers the normalized git origin remote (`host/owner/name`, ssh/https collapsed),
-  else the repo root basename, else the project_key. A bulk run primes the grouper
-  with every session's cwd first, building a basename→repo index so sessions whose
-  worktree has been deleted still merge with living siblings of the same repo.
+  Optional user-supplied regex rules are applied first and override everything;
+  otherwise it prefers the normalized git origin remote (`host/owner/name`,
+  ssh/https collapsed), else the repo root basename, else the project_key. A bulk
+  run primes the grouper with every session's cwd first, building a basename→repo
+  index so sessions whose worktree has been deleted still merge with living
+  siblings of the same repo. The `audit` command reports every grouping decision
+  and its reason (`rule`, `git-remote`, `basename-index`, `basename-fallback`, …).
 - **watch** — an fsnotify daemon that maps changed paths back to sessions and triggers
   debounced re-renders.
 - **config** — resolves settings with flag > env > default precedence and expands `~`.

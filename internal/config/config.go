@@ -14,10 +14,11 @@ import (
 
 // Environment variable names for the persistent flags.
 const (
-	EnvClaudeDir = "CCSESSIONS_CLAUDE_DIR"
-	EnvOut       = "CCSESSIONS_OUT"
-	EnvFormat    = "CCSESSIONS_FORMAT"
-	EnvGroupBy   = "CCSESSIONS_GROUP_BY"
+	EnvClaudeDir  = "CCSESSIONS_CLAUDE_DIR"
+	EnvOut        = "CCSESSIONS_OUT"
+	EnvFormat     = "CCSESSIONS_FORMAT"
+	EnvGroupBy    = "CCSESSIONS_GROUP_BY"
+	EnvGroupRules = "CCSESSIONS_GROUP_RULES"
 )
 
 // Default (pre-expansion) path values.
@@ -30,15 +31,16 @@ const (
 
 // Config is the fully-resolved runtime configuration.
 type Config struct {
-	ClaudeDir string        // source root (expanded absolute path)
-	OutDir    string        // output root (expanded absolute path)
-	Formats   []string      // renderer names, e.g. ["markdown","json"] or ["all"]
-	Projects  []string      // project_key substring filters; empty = all
-	GroupBy   string        // output grouping: "repo" or "project"
-	Debounce  time.Duration // watch coalescing window
-	Force     bool          // ignore mtime, re-render everything
-	Verbose   bool
-	Quiet     bool
+	ClaudeDir  string        // source root (expanded absolute path)
+	OutDir     string        // output root (expanded absolute path)
+	Formats    []string      // renderer names, e.g. ["markdown","json"] or ["all"]
+	Projects   []string      // project_key substring filters; empty = all
+	GroupBy    string        // output grouping: "repo" or "project"
+	GroupRules string        // path to a regex grouping-rules file (optional)
+	Debounce   time.Duration // watch coalescing window
+	Force      bool          // ignore mtime, re-render everything
+	Verbose    bool
+	Quiet      bool
 }
 
 // Resolve builds a Config from a flag set using flag > env > default precedence.
@@ -65,6 +67,14 @@ func Resolve(flags *pflag.FlagSet) (Config, error) {
 		Formats:   formats,
 		Projects:  projects,
 		GroupBy:   resolveString(flags, "group-by", EnvGroupBy, DefaultGroupBy),
+	}
+
+	if rules := resolveString(flags, "group-rules", EnvGroupRules, ""); rules != "" {
+		expanded, err := expandHome(rules)
+		if err != nil {
+			return Config{}, fmt.Errorf("resolving --group-rules: %w", err)
+		}
+		cfg.GroupRules = expanded
 	}
 
 	// Optional flags that not every command registers.

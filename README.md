@@ -89,6 +89,42 @@ directory is resolved to its git repo and output is grouped as
   living sibling of the same repo, so historical sessions still group correctly.
 - Use `--group-by project` to keep the original path-encoded project directories.
 
+### Custom grouping rules
+
+Git resolution can't cover every case — cloud worktrees with no recorded working
+directory, deleted worktrees, or non-git directories. Instead of guessing, supply
+explicit regex rules with `--group-rules <file>` (env `CCSESSIONS_GROUP_RULES`).
+Rules are tried in order; the first match wins and **overrides** git resolution.
+
+```json
+{
+  "rules": [
+    { "pattern": "armand[-.]dev-workdirs", "group": "github.com/me/armand.dev-workdirs" },
+    { "pattern": "armand[-.]dev",          "group": "github.com/me/armand.dev" },
+    { "pattern": "(/|-)browserbase(/|$|-)", "group": "browserbase" }
+  ]
+}
+```
+
+- Each rule matches the session's working directory, or its path-encoded project
+  key when no cwd was recorded (so `.` in a pattern conveniently matches both the
+  `/` in a real path and the `-` in an encoded key).
+- `group` may reference capture groups (`$1`, `${name}`).
+- Order matters — put more specific patterns first (e.g. `…dev-workdirs` before
+  `…dev`).
+
+Preview any layout before committing to it with the audit command:
+
+```sh
+ccsessions audit                                    # current grouping, with reasons
+ccsessions audit --group-rules rules.json           # preview a rules file
+ccsessions audit --json                             # machine-readable
+```
+
+`audit` prints, per group, which directories are folded in, how many sessions
+each contributes, and why — flagging groups that fell back to a bare basename or
+had no cwd (the fragile/uncertain ones) with ⚠.
+
 ## Development
 
 ```sh

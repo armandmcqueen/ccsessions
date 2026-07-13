@@ -4,6 +4,7 @@
 package repogroup
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -19,6 +20,7 @@ const (
 
 // Reason codes explain why a session landed in its group.
 const (
+	ReasonRule             = "rule"              // matched a user-supplied regex rule
 	ReasonProjectMode      = "project-mode"      // grouping disabled
 	ReasonNoCWD            = "no-cwd"            // no working directory recorded
 	ReasonGitRemote        = "git-remote"        // resolved from origin remote
@@ -39,6 +41,7 @@ type resolution struct {
 // concurrent use.
 type Grouper struct {
 	mode    string
+	rules   *RuleSet
 	resolve func(cwd string) resolution // injectable for tests
 
 	mu     sync.Mutex
@@ -55,6 +58,10 @@ func New(mode string) *Grouper {
 		byBase:  make(map[string]string),
 	}
 }
+
+// SetRules attaches an ordered rule set that overrides resolution: a session
+// whose subject matches a rule is grouped by that rule before any git logic.
+func (g *Grouper) SetRules(rs *RuleSet) { g.rules = rs }
 
 // Prime resolves cwd via git (if it still exists) and records the result plus its
 // basename index entry. Calling Prime for every session before keying any of them
@@ -77,6 +84,19 @@ func (g *Grouper) Key(cwd, projectKey string) string {
 // Explain returns the grouping key together with the reason code and a
 // human-readable detail describing why the session was grouped that way.
 func (g *Grouper) Explain(cwd, projectKey string) (key, reason, detail string) {
+	// User rules take precedence over any built-in resolution. The subject is the
+	// cwd when known, otherwise the project key (which path-encodes the cwd).
+	if !g.rules.Empty() {
+		subject := cwd
+		label := "cwd"
+		if subject == "" {
+			subject, label = projectKey, "project key"
+		}
+		if grp, pat, ok := g.rules.Apply(subject); ok {
+			return grp, ReasonRule, fmt.Sprintf("matched rule /%s/ on %s %q", pat, label, subject)
+		}
+	}
+
 	if g.mode != ModeRepo {
 		return projectKey, ReasonProjectMode, "grouping by project directory"
 	}

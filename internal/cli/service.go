@@ -94,6 +94,9 @@ func serviceConfig(cfg config.Config) *service.Config {
 	if len(cfg.Formats) > 0 {
 		args = append(args, "--format", strings.Join(cfg.Formats, ","))
 	}
+	if cfg.GroupRules != "" {
+		args = append(args, "--group-rules", cfg.GroupRules)
+	}
 	for _, p := range cfg.Projects {
 		args = append(args, "--project", p)
 	}
@@ -130,10 +133,11 @@ func newService(cfg config.Config) (service.Service, *watchProgram, error) {
 	}
 	prog := &watchProgram{
 		opts: pipeline.Options{
-			ClaudeDir: cfg.ClaudeDir,
-			OutDir:    cfg.OutDir,
-			GroupBy:   cfg.GroupBy,
-			Renderers: []render.Renderer{}, // filled in below
+			ClaudeDir:  cfg.ClaudeDir,
+			OutDir:     cfg.OutDir,
+			GroupBy:    cfg.GroupBy,
+			GroupRules: cfg.GroupRules,
+			Renderers:  []render.Renderer{}, // filled in below
 		},
 		filters:  cfg.Projects,
 		debounce: debounce,

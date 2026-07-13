@@ -28,10 +28,11 @@ func newWatchCmd() *cobra.Command {
 			}
 
 			opts := pipeline.Options{
-				ClaudeDir: cfg.ClaudeDir,
-				OutDir:    cfg.OutDir,
-				Renderers: renderers,
-				GroupBy:   cfg.GroupBy,
+				ClaudeDir:  cfg.ClaudeDir,
+				OutDir:     cfg.OutDir,
+				Renderers:  renderers,
+				GroupBy:    cfg.GroupBy,
+				GroupRules: cfg.GroupRules,
 				Logf: func(format string, a ...any) {
 					fmt.Fprintf(cmd.ErrOrStderr(), format+"\n", a...)
 				},

@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
-	"strings"
 	"text/tabwriter"
 
+	"github.com/armandmcqueen/ccsessions/internal/config"
 	"github.com/armandmcqueen/ccsessions/internal/discover"
 	"github.com/armandmcqueen/ccsessions/internal/repogroup"
 	"github.com/spf13/cobra"
@@ -45,6 +45,13 @@ func newAuditCmd() *cobra.Command {
 				mode = repogroup.ModeRepo
 			}
 			g := repogroup.New(mode)
+			if cfg.GroupRules != "" {
+				rs, err := repogroup.LoadRules(cfg.GroupRules)
+				if err != nil {
+					return err
+				}
+				g.SetRules(rs)
+			}
 
 			// Prime with every cwd first so deleted-dir sessions can merge with live
 			// siblings — this mirrors what a bulk render does.
@@ -75,20 +82,21 @@ func newAuditCmd() *cobra.Command {
 
 			dirsPerGroup := map[string]map[string]bool{}
 			sessionsPerGroup := map[string]int{}
+			fragileGroup := map[string]bool{}
 			for _, r := range rows {
 				if dirsPerGroup[r.Group] == nil {
 					dirsPerGroup[r.Group] = map[string]bool{}
 				}
 				dirsPerGroup[r.Group][r.CWD] = true
 				sessionsPerGroup[r.Group] += r.Sessions
+				// A group is fragile when a session reached it through a guess: a
+				// bare basename (collides across repos, splits subdirs off) or no cwd
+				// at all. Explicit rule matches and git resolution are confident.
+				if r.Reason == repogroup.ReasonBasenameFallback || r.Reason == repogroup.ReasonNoCWD {
+					fragileGroup[r.Group] = true
+				}
 			}
-			// A group is unreliable when its key is not a resolved remote
-			// (host/owner/name). Bare basenames collide across repos and split
-			// subdirectories off from their parent repo; project_key fallbacks mean
-			// the repo could not be determined at all.
-			suspect := func(group string) bool {
-				return !strings.Contains(group, "/")
-			}
+			suspect := func(group string) bool { return fragileGroup[group] }
 
 			// Sort: suspect groups first, then by session count desc, then group, cwd.
 			sort.Slice(rows, func(i, j int) bool {
@@ -144,7 +152,8 @@ func newAuditCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().Bool("json", false, "machine-readable JSON output")
-	// audit only reads; grouping flag lets you compare repo vs project.
+	// audit only reads; these let you preview a grouping before deploying it.
 	cmd.Flags().String("group-by", "repo", `grouping to audit: "repo" or "project"`)
+	cmd.Flags().String("group-rules", "", "path to a JSON regex grouping-rules file to audit (env "+config.EnvGroupRules+")")
 	return cmd
 }

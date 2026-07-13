@@ -16,13 +16,14 @@ import (
 
 // Options configures a render run.
 type Options struct {
-	ClaudeDir string
-	OutDir    string
-	Renderers []render.Renderer
-	Force     bool
-	GroupBy   string                           // "repo" (default) or "project"
-	Grouper   *repogroup.Grouper               // shared across a bulk run; created per-call if nil
-	Logf      func(format string, args ...any) // optional verbose logger
+	ClaudeDir  string
+	OutDir     string
+	Renderers  []render.Renderer
+	Force      bool
+	GroupBy    string                           // "repo" (default) or "project"
+	GroupRules string                           // path to a regex grouping-rules file (optional)
+	Grouper    *repogroup.Grouper               // shared across a bulk run; created per-call if nil
+	Logf       func(format string, args ...any) // optional verbose logger
 }
 
 // grouper returns the run's grouper, creating a transient one if none was set
@@ -31,11 +32,25 @@ func (o Options) grouper() *repogroup.Grouper {
 	if o.Grouper != nil {
 		return o.Grouper
 	}
+	g, _ := o.newGrouper()
+	return g
+}
+
+// newGrouper builds a grouper for the configured mode and loads any rules file.
+func (o Options) newGrouper() (*repogroup.Grouper, error) {
 	mode := o.GroupBy
 	if mode == "" {
 		mode = repogroup.ModeRepo
 	}
-	return repogroup.New(mode)
+	g := repogroup.New(mode)
+	if o.GroupRules != "" {
+		rs, err := repogroup.LoadRules(o.GroupRules)
+		if err != nil {
+			return g, err
+		}
+		g.SetRules(rs)
+	}
+	return g, nil
 }
 
 func (o Options) logf(format string, args ...any) {
@@ -63,15 +78,13 @@ func RenderAll(opts Options, projectFilters []string) (Stats, error) {
 	// Build one grouper for the whole run and prime it with every session's cwd
 	// first, so deleted-directory sessions can merge with live siblings by
 	// basename.
-	mode := opts.GroupBy
-	if mode == "" {
-		mode = repogroup.ModeRepo
+	grouper, err := opts.newGrouper()
+	if err != nil {
+		return Stats{}, err
 	}
-	opts.Grouper = repogroup.New(mode)
-	if mode == repogroup.ModeRepo {
-		for _, ref := range refs {
-			opts.Grouper.Prime(discover.PeekCWD(ref.MainPath))
-		}
+	opts.Grouper = grouper
+	for _, ref := range refs {
+		opts.Grouper.Prime(discover.PeekCWD(ref.MainPath))
 	}
 
 	var st Stats

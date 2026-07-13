@@ -6,7 +6,9 @@ repo (esp. worktrees) group together. Requested because user has many worktrees
 of one repo (armand.dev).
 
 ## Status
-COMPLETE, tests green, verified on real data. NOT yet deployed to the live service. Stacks on service-command (PR #2).
+COMPLETE, deployed live as v0.2.0, PR #3 open (https://github.com/armandmcqueen/ccsessions/pull/3, rebased onto main after PR #2 merged).
+- Live service redeployed (wipe + restart) with repo grouping → ~/data/ccsessions now repo-grouped: 104 sessions under github.com/armandmcqueen/armand.dev, only 2 cwd-less stub dirs remain, 127 total.
+- Bug found + fixed during live test: PeekCWD 20-line cap missed cwd behind many leading metadata/file-history-snapshot lines (session 20fc9717 cwd on line 25) → mis-grouped to project_key. Fixed with byte-level scan up to 10000 lines, huge-line safe (commit d5be079/"Fix PeekCWD...").
 
 ## Design (as built)
 - Grouping key = normalized git origin remote: host/owner/name (ssh+https collapse). Fallback: repo-root basename → project_key.

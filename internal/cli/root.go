@@ -41,6 +41,7 @@ func newRootCmd() *cobra.Command {
 		newRenderCmd(),
 		newWatchCmd(),
 		newServiceCmd(),
+		newAuditCmd(),
 	)
 	return root
 }

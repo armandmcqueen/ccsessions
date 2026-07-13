@@ -17,18 +17,33 @@ const (
 	ModeProject = "project" // keep the original path-encoded project_key
 )
 
+// Reason codes explain why a session landed in its group.
+const (
+	ReasonProjectMode      = "project-mode"      // grouping disabled
+	ReasonNoCWD            = "no-cwd"            // no working directory recorded
+	ReasonGitRemote        = "git-remote"        // resolved from origin remote
+	ReasonGitToplevel      = "git-toplevel"      // resolved from repo root basename (no remote)
+	ReasonBasenameIndex    = "basename-index"    // dir gone; merged with a live sibling by basename
+	ReasonBasenameFallback = "basename-fallback" // not a git repo / dir gone; grouped by bare basename
+)
+
+// resolution is the cached outcome of resolving one working directory.
+type resolution struct {
+	key    string
+	reason string
+	detail string
+	ok     bool
+}
+
 // Grouper resolves working directories to grouping keys. It is safe for
-// concurrent use. Live directories are resolved via git and cached; directories
-// that no longer exist fall back to their basename, looked up against an index
-// of basenames seen from live repos so deleted worktrees merge with their living
-// siblings.
+// concurrent use.
 type Grouper struct {
 	mode    string
-	resolve func(cwd string) (string, bool) // injectable for tests
+	resolve func(cwd string) resolution // injectable for tests
 
 	mu     sync.Mutex
-	byCwd  map[string]string // cwd -> repo key ("" means resolution failed)
-	byBase map[string]string // repo basename -> repo key
+	byCwd  map[string]resolution
+	byBase map[string]string // repo basename -> repo key (from live resolutions)
 }
 
 // New returns a Grouper for the given mode using git-backed resolution.
@@ -36,7 +51,7 @@ func New(mode string) *Grouper {
 	return &Grouper{
 		mode:    mode,
 		resolve: gitResolve,
-		byCwd:   make(map[string]string),
+		byCwd:   make(map[string]resolution),
 		byBase:  make(map[string]string),
 	}
 }
@@ -53,68 +68,75 @@ func (g *Grouper) Prime(cwd string) {
 	g.resolveLocked(cwd)
 }
 
-// Key returns the grouping key for a session's cwd, falling back to projectKey
-// when repo resolution is impossible.
+// Key returns the grouping key for a session's cwd.
 func (g *Grouper) Key(cwd, projectKey string) string {
-	if g.mode != ModeRepo || cwd == "" {
-		return projectKey
-	}
-	g.mu.Lock()
-	defer g.mu.Unlock()
-
-	if key := g.resolveLocked(cwd); key != "" {
-		return key
-	}
-	// Directory is gone: recover via basename, merging with a live sibling if one
-	// established this basename, otherwise grouping by the basename alone.
-	base := sanitizeSegment(filepath.Base(cwd))
-	if base == "" {
-		return projectKey
-	}
-	if key, ok := g.byBase[base]; ok {
-		return key
-	}
-	return base
-}
-
-// resolveLocked resolves and caches cwd; caller must hold g.mu. Returns "" if the
-// directory cannot be resolved to a repo (e.g. it no longer exists).
-func (g *Grouper) resolveLocked(cwd string) string {
-	if key, ok := g.byCwd[cwd]; ok {
-		return key
-	}
-	key, ok := g.resolve(cwd)
-	if !ok {
-		g.byCwd[cwd] = ""
-		return ""
-	}
-	g.byCwd[cwd] = key
-	if base := lastSegment(key); base != "" {
-		if _, exists := g.byBase[base]; !exists {
-			g.byBase[base] = key
-		}
-	}
+	key, _, _ := g.Explain(cwd, projectKey)
 	return key
 }
 
+// Explain returns the grouping key together with the reason code and a
+// human-readable detail describing why the session was grouped that way.
+func (g *Grouper) Explain(cwd, projectKey string) (key, reason, detail string) {
+	if g.mode != ModeRepo {
+		return projectKey, ReasonProjectMode, "grouping by project directory"
+	}
+	if cwd == "" {
+		return projectKey, ReasonNoCWD, "no working directory recorded in the session"
+	}
+
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	res := g.resolveLocked(cwd)
+	if res.ok {
+		return res.key, res.reason, res.detail
+	}
+
+	// Directory could not be resolved (gone or not a git repo): recover by basename.
+	base := sanitizeSegment(filepath.Base(cwd))
+	if base == "" {
+		return projectKey, ReasonNoCWD, res.detail
+	}
+	if key, ok := g.byBase[base]; ok {
+		return key, ReasonBasenameIndex, res.detail + "; matched live sibling by basename '" + base + "'"
+	}
+	return base, ReasonBasenameFallback, res.detail + "; grouped by bare basename '" + base + "'"
+}
+
+// resolveLocked resolves and caches cwd; caller must hold g.mu.
+func (g *Grouper) resolveLocked(cwd string) resolution {
+	if res, ok := g.byCwd[cwd]; ok {
+		return res
+	}
+	res := g.resolve(cwd)
+	g.byCwd[cwd] = res
+	if res.ok {
+		if base := lastSegment(res.key); base != "" {
+			if _, exists := g.byBase[base]; !exists {
+				g.byBase[base] = res.key
+			}
+		}
+	}
+	return res
+}
+
 // gitResolve resolves a directory to a repo key: the normalized origin remote if
-// present, otherwise the repository root's basename. Returns ok=false if the
-// directory does not exist or is not a git repository.
-func gitResolve(cwd string) (string, bool) {
+// present, otherwise the repository root's basename.
+func gitResolve(cwd string) resolution {
 	if info, err := os.Stat(cwd); err != nil || !info.IsDir() {
-		return "", false
+		return resolution{ok: false, detail: "directory does not exist on this machine"}
 	}
 	if remote := runGit(cwd, "config", "--get", "remote.origin.url"); remote != "" {
 		if key := normalizeRemote(remote); key != "" {
-			return key, true
+			return resolution{key: key, reason: ReasonGitRemote, detail: remote, ok: true}
 		}
 	}
 	if top := runGit(cwd, "rev-parse", "--show-toplevel"); top != "" {
 		if base := sanitizeSegment(filepath.Base(top)); base != "" {
-			return base, true
+			return resolution{key: base, reason: ReasonGitToplevel, detail: "git repo root " + top + " (no remote)", ok: true}
 		}
 	}
-	return "", false
+	return resolution{ok: false, detail: "not a git repository"}
 }
 
 func runGit(cwd string, args ...string) string {
@@ -159,7 +181,6 @@ func normalizeRemote(url string) string {
 		s = s[:i] + "/" + s[i+1:]
 	}
 
-	// Sanitize each path segment and drop empties.
 	var segs []string
 	for _, seg := range strings.Split(s, "/") {
 		if seg = sanitizeSegment(seg); seg != "" {

@@ -49,11 +49,11 @@ func TestProjectModePassesThrough(t *testing.T) {
 func TestDeletedDirMergesViaBasename(t *testing.T) {
 	g := New(ModeRepo)
 	// Injected resolver: only the "live" worktree resolves; the deleted one fails.
-	g.resolve = func(cwd string) (string, bool) {
+	g.resolve = func(cwd string) resolution {
 		if cwd == "/code/workdirs/live/armand.dev" {
-			return "github.com/me/armand.dev", true
+			return resolution{key: "github.com/me/armand.dev", reason: ReasonGitRemote, ok: true}
 		}
-		return "", false // deleted / not a repo
+		return resolution{ok: false, detail: "directory does not exist on this machine"}
 	}
 
 	// Prime with the live sibling first (as RenderAll does).
@@ -72,10 +72,11 @@ func TestDeletedDirMergesViaBasename(t *testing.T) {
 
 func TestUnresolvableFallsBackToBasename(t *testing.T) {
 	g := New(ModeRepo)
-	g.resolve = func(string) (string, bool) { return "", false }
+	g.resolve = func(string) resolution { return resolution{ok: false} }
 	// No live sibling primed this basename, so it groups by the sanitized basename.
-	if got := g.Key("/code/gone/mystery", "-proj"); got != "mystery" {
-		t.Errorf("Key = %q, want basename fallback \"mystery\"", got)
+	key, reason, _ := g.Explain("/code/gone/mystery", "-proj")
+	if key != "mystery" || reason != ReasonBasenameFallback {
+		t.Errorf("Explain = (%q, %q), want (\"mystery\", %q)", key, reason, ReasonBasenameFallback)
 	}
 }
 

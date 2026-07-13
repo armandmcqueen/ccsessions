@@ -3,6 +3,8 @@
 package discover
 
 import (
+	"bufio"
+	"bytes"
 	"os"
 	"path/filepath"
 	"sort"
@@ -70,6 +72,54 @@ func Sessions(claudeDir string, projectFilters []string) ([]SessionRef, error) {
 		return refs[i].SessionID < refs[j].SessionID
 	})
 	return refs, nil
+}
+
+// peekCWDMaxLines bounds how far PeekCWD scans. A session can open with many
+// metadata records (ai-title, mode, permission-mode, and one file-history-snapshot
+// per file touched) before the first entry that carries a cwd, so this needs to be
+// generous — the scan is a cheap byte search, not a JSON parse.
+const peekCWDMaxLines = 10000
+
+var cwdMarker = []byte(`"cwd":"`)
+
+// PeekCWD cheaply reads a session's working directory by scanning its main
+// transcript for a "cwd" field, without fully parsing the file. It uses a
+// byte-level search (not JSON decoding) so a single huge line — e.g. a large
+// pasted attachment — costs nothing and never overflows a scanner buffer.
+// Returns "" if no cwd is found within the scan bound.
+func PeekCWD(mainPath string) string {
+	f, err := os.Open(mainPath)
+	if err != nil {
+		return ""
+	}
+	defer f.Close()
+	br := bufio.NewReaderSize(f, 1<<20)
+	for i := 0; i < peekCWDMaxLines; i++ {
+		line, readErr := br.ReadBytes('\n')
+		if cwd := extractCWD(line); cwd != "" {
+			return cwd
+		}
+		if readErr != nil {
+			break
+		}
+	}
+	return ""
+}
+
+// extractCWD pulls the value of a top-level `"cwd":"..."` field out of a raw JSONL
+// line via byte search. Session cwds are filesystem paths without embedded quotes,
+// so a simple scan to the closing quote is sufficient.
+func extractCWD(line []byte) string {
+	idx := bytes.Index(line, cwdMarker)
+	if idx < 0 {
+		return ""
+	}
+	rest := line[idx+len(cwdMarker):]
+	end := bytes.IndexByte(rest, '"')
+	if end <= 0 {
+		return ""
+	}
+	return string(rest[:end])
 }
 
 // RefFor builds a SessionRef for a known project key and session id.

@@ -2,6 +2,7 @@
 package cli
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/armandmcqueen/ccsessions/internal/config"
@@ -40,19 +41,30 @@ func newRootCmd() *cobra.Command {
 		newRenderCmd(),
 		newWatchCmd(),
 		newServiceCmd(),
+		newAuditCmd(),
 	)
 	return root
 }
 
-// cfgFromCmd resolves the merged configuration for a command invocation.
+// cfgFromCmd resolves the merged configuration for a command invocation and
+// validates it.
 func cfgFromCmd(cmd *cobra.Command) (config.Config, error) {
-	return config.Resolve(cmd.Flags())
+	cfg, err := config.Resolve(cmd.Flags())
+	if err != nil {
+		return cfg, err
+	}
+	if cmd.Flags().Lookup("group-by") != nil && cfg.GroupBy != "repo" && cfg.GroupBy != "project" {
+		return cfg, fmt.Errorf("invalid --group-by %q; want \"repo\" or \"project\"", cfg.GroupBy)
+	}
+	return cfg, nil
 }
 
 // addOutputFlags registers the flags shared by commands that render files.
 func addOutputFlags(cmd *cobra.Command) {
 	cmd.Flags().String("out", config.DefaultOut, "output directory for rendered sessions (env "+config.EnvOut+")")
 	cmd.Flags().String("format", config.DefaultFormat, `renderers to run, comma-separated, or "all" (env `+config.EnvFormat+")")
+	cmd.Flags().String("group-by", config.DefaultGroupBy, `group output by "repo" (fold worktrees of the same git repo together) or "project" (env `+config.EnvGroupBy+")")
+	cmd.Flags().String("group-rules", "", "path to a JSON regex grouping-rules file that overrides resolution (env "+config.EnvGroupRules+")")
 }
 
 // defaultDebounce is the watch coalescing window default.

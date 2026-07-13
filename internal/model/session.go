@@ -37,6 +37,8 @@ type Session struct {
 	SessionID  string      `json:"session_id"`
 	ProjectKey string      `json:"project_key"`
 	FilePath   string      `json:"file_path"`
+	CWD        string      `json:"cwd,omitempty"`  // working directory the session ran in
+	Repo       string      `json:"repo,omitempty"` // resolved repo group key (e.g. github.com/owner/name)
 	Slug       string      `json:"slug,omitempty"`
 	Version    string      `json:"version,omitempty"`
 	GitBranch  string      `json:"git_branch,omitempty"`

@@ -29,10 +29,12 @@ func newRenderCmd() *cobra.Command {
 			}
 
 			opts := pipeline.Options{
-				ClaudeDir: cfg.ClaudeDir,
-				OutDir:    cfg.OutDir,
-				Renderers: renderers,
-				Force:     cfg.Force,
+				ClaudeDir:  cfg.ClaudeDir,
+				OutDir:     cfg.OutDir,
+				Renderers:  renderers,
+				Force:      cfg.Force,
+				GroupBy:    cfg.GroupBy,
+				GroupRules: cfg.GroupRules,
 			}
 			if cfg.Verbose {
 				opts.Logf = func(format string, a ...any) {

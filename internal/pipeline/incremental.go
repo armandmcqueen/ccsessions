@@ -13,13 +13,13 @@ import (
 // needsRender reports whether a session's outputs are missing or older than its
 // source files. It computes the expected main-document paths (parent + each
 // subagent, for each renderer) without parsing, so the check is cheap.
-func needsRender(ref discover.SessionRef, outDir string, renderers []render.Renderer) bool {
+func needsRender(ref discover.SessionRef, outDir, groupKey string, renderers []render.Renderer) bool {
 	srcMtime, ok := maxMtime(ref.SourceFiles())
 	if !ok {
 		return false // no readable source; nothing to do
 	}
 
-	projDir := filepath.Join(outDir, ref.ProjectKey)
+	projDir := filepath.Join(outDir, groupKey)
 	stems := []string{ref.SessionID}
 	for _, sp := range ref.SubagentFiles() {
 		stems = append(stems, ref.SessionID+".agent-"+parser.AgentIDFromPath(sp))

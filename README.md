@@ -44,6 +44,26 @@ ccsessions watch
 ccsessions list
 ```
 
+### Run it constantly (background service)
+
+To keep sessions replicated to a location without leaving a terminal open, install
+ccsessions as an OS-managed background service (launchd on macOS, systemd on Linux).
+It auto-starts at login and restarts on crash.
+
+```sh
+# Install + start, replicating into ~/data/ccsessions
+ccsessions service install --out ~/data/ccsessions
+
+ccsessions service status        # running / stopped / not installed
+ccsessions service stop          # pause without removing
+ccsessions service start         # resume
+ccsessions service uninstall     # remove entirely
+```
+
+`install` bakes the current `--out`, `--claude-dir`, `--format`, `--debounce`, and
+`--project` settings into the service definition. Service logs are written to
+`~/Library/Logs/ccsessions.log` (macOS) or the user cache dir (Linux).
+
 ### Configuration
 
 | Setting     | Flag           | Env                     | Default                  |

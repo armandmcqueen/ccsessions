@@ -6,7 +6,11 @@ background service (continuous replication without a terminal). Requested to
 replicate sessions constantly into `~/data/ccsessions`.
 
 ## Status
-COMPLETE and installed live. Ready to commit + PR.
+COMPLETE, deployed as v0.1.0, PR #2 open (https://github.com/armandmcqueen/ccsessions/pull/2).
+- Committed + pushed to origin/service-command.
+- Bumped v0.0.1 → v0.1.0; built + deployed to ~/.local/bin/ccsessions-v0.1.0, symlink repointed.
+- Service restarted; lsof confirms daemon (pid) runs ccsessions-v0.1.0; replicating live to ~/data/ccsessions.
+- NOTE: plist ProgramArguments[0] = the SYMLINK (~/.local/bin/ccsessions), so version bumps = build versioned binary + repoint symlink + `service stop/start` (no reinstall). No git tag pushed yet (would trigger goreleaser release); create tag v0.1.0 after merge to cut a real release.
 - `ccsessions service install|uninstall|start|stop|status|run` (run is hidden).
 - Uses github.com/kardianos/service v1.3.0 (launchd/systemd/windows; pure Go).
 - Per-user service (Option UserService+RunAtLoad+KeepAlive) — no root, auto-start at login, restart on crash.

@@ -33,6 +33,7 @@ func newRenderCmd() *cobra.Command {
 				OutDir:    cfg.OutDir,
 				Renderers: renderers,
 				Force:     cfg.Force,
+				GroupBy:   cfg.GroupBy,
 			}
 			if cfg.Verbose {
 				opts.Logf = func(format string, a ...any) {

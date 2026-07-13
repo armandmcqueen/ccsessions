@@ -89,6 +89,7 @@ func serviceConfig(cfg config.Config) *service.Config {
 		"--out", cfg.OutDir,
 		"--claude-dir", cfg.ClaudeDir,
 		"--debounce", cfg.Debounce.String(),
+		"--group-by", cfg.GroupBy,
 	}
 	if len(cfg.Formats) > 0 {
 		args = append(args, "--format", strings.Join(cfg.Formats, ","))
@@ -131,6 +132,7 @@ func newService(cfg config.Config) (service.Service, *watchProgram, error) {
 		opts: pipeline.Options{
 			ClaudeDir: cfg.ClaudeDir,
 			OutDir:    cfg.OutDir,
+			GroupBy:   cfg.GroupBy,
 			Renderers: []render.Renderer{}, // filled in below
 		},
 		filters:  cfg.Projects,

@@ -17,6 +17,7 @@ const (
 	EnvClaudeDir = "CCSESSIONS_CLAUDE_DIR"
 	EnvOut       = "CCSESSIONS_OUT"
 	EnvFormat    = "CCSESSIONS_FORMAT"
+	EnvGroupBy   = "CCSESSIONS_GROUP_BY"
 )
 
 // Default (pre-expansion) path values.
@@ -24,6 +25,7 @@ const (
 	DefaultClaudeDir = "~/.claude"
 	DefaultOut       = "~/.ai/claude-sessions"
 	DefaultFormat    = "markdown,json"
+	DefaultGroupBy   = "repo"
 )
 
 // Config is the fully-resolved runtime configuration.
@@ -32,6 +34,7 @@ type Config struct {
 	OutDir    string        // output root (expanded absolute path)
 	Formats   []string      // renderer names, e.g. ["markdown","json"] or ["all"]
 	Projects  []string      // project_key substring filters; empty = all
+	GroupBy   string        // output grouping: "repo" or "project"
 	Debounce  time.Duration // watch coalescing window
 	Force     bool          // ignore mtime, re-render everything
 	Verbose   bool
@@ -61,6 +64,7 @@ func Resolve(flags *pflag.FlagSet) (Config, error) {
 		OutDir:    outDir,
 		Formats:   formats,
 		Projects:  projects,
+		GroupBy:   resolveString(flags, "group-by", EnvGroupBy, DefaultGroupBy),
 	}
 
 	// Optional flags that not every command registers.

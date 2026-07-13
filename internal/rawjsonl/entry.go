@@ -19,6 +19,7 @@ type Entry struct {
 	Slug        string          `json:"slug"`
 	IsSidechain bool            `json:"isSidechain"`
 	RequestID   string          `json:"requestId"`
+	CWD         string          `json:"cwd"`
 	Message     json.RawMessage `json:"message"`
 
 	// system subtype=turn_duration

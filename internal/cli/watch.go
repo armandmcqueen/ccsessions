@@ -31,6 +31,7 @@ func newWatchCmd() *cobra.Command {
 				ClaudeDir: cfg.ClaudeDir,
 				OutDir:    cfg.OutDir,
 				Renderers: renderers,
+				GroupBy:   cfg.GroupBy,
 				Logf: func(format string, a ...any) {
 					fmt.Fprintf(cmd.ErrOrStderr(), format+"\n", a...)
 				},

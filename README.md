@@ -71,8 +71,23 @@ ccsessions service uninstall     # remove entirely
 | Claude home | `--claude-dir` | `CCSESSIONS_CLAUDE_DIR` | `~/.claude`              |
 | Output dir  | `--out`        | `CCSESSIONS_OUT`        | `~/.ai/claude-sessions`  |
 | Formats     | `--format`     | `CCSESSIONS_FORMAT`     | `markdown,json`          |
+| Grouping    | `--group-by`   | `CCSESSIONS_GROUP_BY`   | `repo`                   |
 
 Precedence is flag > environment variable > default.
+
+### Grouping by repo
+
+Claude Code creates a separate project directory for every working directory, so
+multiple worktrees or checkouts of the same repo end up as many unrelated project
+folders. By default ccsessions folds them back together: each session's working
+directory is resolved to its git repo and output is grouped as
+`<host>/<owner>/<name>/<session_id>.*` (e.g. all worktrees of `armand.dev` land in
+`github.com/you/armand.dev/`). ssh and https remotes collapse to the same key.
+
+- Directories that aren't git repos fall back to the directory's basename.
+- Directories that no longer exist (deleted worktrees) are matched by basename to a
+  living sibling of the same repo, so historical sessions still group correctly.
+- Use `--group-by project` to keep the original path-encoded project directories.
 
 ## Development
 

@@ -3,6 +3,8 @@
 package discover
 
 import (
+	"bufio"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"sort"
@@ -70,6 +72,28 @@ func Sessions(claudeDir string, projectFilters []string) ([]SessionRef, error) {
 		return refs[i].SessionID < refs[j].SessionID
 	})
 	return refs, nil
+}
+
+// PeekCWD cheaply reads a session's working directory by scanning the first few
+// lines of its main transcript for a "cwd" field, without fully parsing the file.
+// Returns "" if none is found.
+func PeekCWD(mainPath string) string {
+	f, err := os.Open(mainPath)
+	if err != nil {
+		return ""
+	}
+	defer f.Close()
+	sc := bufio.NewScanner(f)
+	sc.Buffer(make([]byte, 0, 64*1024), 8*1024*1024)
+	for i := 0; i < 20 && sc.Scan(); i++ {
+		var rec struct {
+			CWD string `json:"cwd"`
+		}
+		if json.Unmarshal(sc.Bytes(), &rec) == nil && rec.CWD != "" {
+			return rec.CWD
+		}
+	}
+	return ""
 }
 
 // RefFor builds a SessionRef for a known project key and session id.

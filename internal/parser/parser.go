@@ -62,6 +62,9 @@ func gatherMetadata(s *model.Session, entries []*rawjsonl.Entry) {
 		if s.Slug == "" && e.Slug != "" {
 			s.Slug = e.Slug
 		}
+		if s.CWD == "" && e.CWD != "" {
+			s.CWD = e.CWD
+		}
 		switch e.Type {
 		case "ai-title":
 			if e.AiTitle != "" {

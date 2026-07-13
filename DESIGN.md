@@ -38,7 +38,14 @@ discover ──▶ parser ──▶ model.Session ──▶ render (Renderer reg
 - **watch** — an fsnotify daemon that maps changed paths back to sessions and triggers
   debounced re-renders.
 - **config** — resolves settings with flag > env > default precedence and expands `~`.
-- **cli** — cobra command tree (`render`, `watch`, `list`, `version`).
+- **cli** — cobra command tree (`render`, `watch`, `list`, `version`, `service`).
+
+The `service` command group (in `internal/cli/service.go`) wraps the `watch` loop
+in an OS-managed background service via `github.com/kardianos/service` (launchd on
+macOS, systemd on Linux). It installs as a per-user service so no root is required.
+`install` bakes the resolved config into the service's launch arguments, so the
+daemon replicates to exactly the configured target; `service run` is the hidden
+entrypoint the OS invokes, which drives the same watcher used by `watch`.
 
 ## Key decisions
 
